@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator pothos {
+  provider = "prisma-pothos-types"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MessageType {
+  POST
+  COMMENT
+}
+
+enum ReactionType {
+  THUMBS_UP
+  THUMBS_DOWN
+  ROCKET
+  HEART
+}
+
+model Message {
+  id        Int   @id @default(autoincrement())
+  reactions ReactionType[]
+  body      String
+  createdAt DateTime @default(now())
+  type      MessageType
+  post      Post?
+  comment   Comment?
+}
+
+model Post {
+
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId Int      @id
+  comments  Comment[]
+}
+
+model Comment {
+
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId Int      @id
+  post      Post     @relation(fields: [postId], references: [messageId], onDelete: SetNull)
+  postId    Int
+  parentComment Comment?  @relation("ChildComments", fields: [parentCommentId], references: [messageId])
+  parentCommentId Int?
+  childComments Comment[] @relation("ChildComments")
+}
+
