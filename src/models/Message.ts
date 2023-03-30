@@ -1,6 +1,9 @@
 import { builder } from '../builder';
 import { prisma } from '../db';
-/*
+import { ReactionType } from '@prisma/client';
+
+builder.enumType(ReactionType, { name: 'Reaction' });
+
 builder.prismaObject('Message', {
   fields: t => ({
     id: t.exposeID('id'),
@@ -11,33 +14,45 @@ builder.prismaObject('Message', {
   }),
 });
 
-builder.queryField('Posts', t => 
-  t.prismaField({
-    type: ['Message'],
-    resolve: async (query, _root, _args, _ctx, _info) => {
-      return prisma.message.findMany({
-        where: {
-          type:'POST',
-        },
-        include: {
-          Comments: {
+const DEFAULT_PAGE_SIZE = 10;
 
-          }
+builder.queryField('Post', t => 
+  t.prismaField({
+    type: 'Message',
+    nullable: true,
+    args: {
+      id: t.arg.id({ required: true }),
+    },
+    resolve: async (query, _root, args, _ctx, _info) => {
+      return prisma.message.findUnique({
+        ...query,
+        where: {
+          id: Number(args.id),
         },
       });
     },
   })
 );
-*/
-builder.prismaNode('Message', {
-  id: { field: 'id' },
-  fields: t => ({
-    body: t.exposeString('body'),
-    type: t.exposeString('type'),
-    reactions: t.exposeStringList('reactions'),
-    Comments: t.relation('Comments'),
-  }),
-});
+
+builder.queryField('Posts', t => 
+  t.prismaField({
+    type: ['Message'],
+    args: {
+      take: t.arg.int(),
+      skip: t.arg.int(),
+    },
+    resolve: async (query, _root, args, _ctx, _info) => {
+      return prisma.message.findMany({
+        ...query,
+        take: args.take ?? DEFAULT_PAGE_SIZE,
+        skip: args.skip ?? 0,
+        where: {
+          type:'POST',
+        },
+      });
+    },
+  })
+);
 
 const createPostInput = builder.inputType('createPostInput', {
   fields: t => ({
@@ -81,7 +96,7 @@ builder.mutationField('createComment', t =>
         data: {
           type: 'COMMENT',
           body: args.input.body,
-          parentId: String(args.input.parentId.valueOf),
+          parentId: Number(args.input.parentId),
           /*
           parent: {
             connect: {
@@ -96,37 +111,31 @@ builder.mutationField('createComment', t =>
   })
 );
 
-builder.queryField('Posts', t => 
-  t.prismaConnection({
-    type: 'Message',
-    cursor: 'id',
-    resolve: async (query, _root, _args, _ctx, _info) => {
-      return prisma.message.findMany({
-        ...query,
-        where: {
-          type:'POST',
-        },
-      });
-    },
-  })
-);
+const addReactionInput = builder.inputType('addReactionInput', {
+  fields: t => ({
+    reaction: t.field({ type: ReactionType }),
+    id: t.id({ required: true }),
+  }),
+});
 
-builder.queryField('Post', t => 
+builder.mutationField('addReaction', t =>
   t.prismaField({
     type: 'Message',
-    nullable: true,
     args: {
-      id: t.arg.id({ required: true }),
+      input: t.arg({ type: addReactionInput, required: true }),
     },
-    resolve: async (query, _root, args, _ctx, _info) => {
-      return prisma.message.findUnique({
-        ...query,
+    resolve: async (_query, _root, args, _ctx, _info) => {
+      const Comment = await prisma.message.update({
         where: {
-          id: String(args.id.valueOf),
+          id: Number(args.input.id),
         },
+        data: {
+          reactions: {
+            push: args.input.reaction as ReactionType,
+          },
+        }
       });
-    },
+      return Comment;
+    }
   })
 );
-
-//builder.mutationField

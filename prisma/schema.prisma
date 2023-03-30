@@ -27,12 +27,12 @@ enum ReactionType {
 }
 
 model Message {
-  id        String       @id @default(uuid())
-  parent    Message?  @relation("Children", fields: [parentId], references: [id], onDelete: Cascade)
-  parentId  String?
-  Comments  Message[] @relation("Children")
+  id        Int       @id @default(autoincrement())
+  parent    Message?     @relation("Children", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId  Int?
+  Comments  Message[]    @relation("Children")
   reactions ReactionType[]
   body      String
-  createdAt DateTime  @default(now())
+  createdAt DateTime     @default(now())
   type      MessageType
 }
