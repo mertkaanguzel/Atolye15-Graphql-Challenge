@@ -3,25 +3,18 @@ const prisma = new PrismaClient();
 
 async function main() {
   await prisma.message.deleteMany({});
-  await prisma.post.deleteMany({});
-  await prisma.comment.deleteMany({});
 
-  const Message = await prisma.message.create({
+  const Post = await prisma.message.create({
     data: {
       type: 'POST',
       body: 'Test Post',
+      
     }
-  });
-
-  const Post = await prisma.post.create({
-    data: {
-      messageId: Message.id,
-    },
   });
 
   await prisma.message.update({
     where: {
-      id: Post.messageId
+      id: Post.id
     },
     data: {
       reactions: {
@@ -30,23 +23,18 @@ async function main() {
     }
   });
 
-  const Message1 = await prisma.message.create({
+  const Comment = await prisma.message.create({
     data: {
       type: 'COMMENT',
       body: 'Test Comment',
-    }
-  });
+      parentId: Post.id,
 
-  const Comment = await prisma.comment.create({
-    data: {
-      messageId: Message1.id,
-      postId: Post.messageId,
-    },
+    }
   });
 
   await prisma.message.update({
     where: {
-      id: Comment.messageId
+      id: Comment.id
     },
     data: {
       reactions: {
@@ -55,18 +43,11 @@ async function main() {
     }
   });
 
-  const Message2 = await prisma.message.create({
+  const NestedComment = await prisma.message.create({
     data: {
-      type: 'COMMENT',
+      type:  'COMMENT',
       body: 'Nested Test Comment',
-    }
-  });
-
-  const NestedComment = await prisma.comment.create({
-    data: {
-      messageId: Message2.id,
-      postId: Post.messageId,
-      parentCommentId: Comment.messageId
+      parentId: Comment.id
     },
   });
 }
